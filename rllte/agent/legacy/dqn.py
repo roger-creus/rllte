@@ -155,6 +155,15 @@ class DQN(OffPolicyAgent):
                 step=self.global_step,
             )
             batch = batch._replace(reward=batch.rewards + intrinsic_rewards.to(self.device))
+            
+            # update irs
+            self.irs.update(
+                samples={
+                    "obs": batch.observations,
+                    "actions": batch.actions,
+                    "next_obs": batch.next_observations
+                }
+            )
 
         # encode
         encoded_obs = self.policy.encoder(batch.observations)

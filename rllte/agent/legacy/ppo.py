@@ -31,7 +31,7 @@ from torch import nn
 
 from rllte.common.prototype import OnPolicyAgent
 from rllte.common.type_alias import VecEnv
-from rllte.xploit.encoder import IdentityEncoder, MnihCnnEncoder
+from rllte.xploit.encoder import IdentityEncoder, MnihCnnEncoder, EspeholtResidualEncoder
 from rllte.xploit.policy import OnPolicySharedActorCritic
 from rllte.xploit.storage import VanillaRolloutStorage
 from rllte.xplore.distribution import Bernoulli, Categorical, DiagonalGaussian, MultiCategorical
@@ -90,6 +90,7 @@ class PPO(OnPolicyAgent):
         max_grad_norm: float = 0.5,
         discount: float = 0.999,
         init_fn: str = "orthogonal",
+        encoder: str = "espeholt",
     ) -> None:
         super().__init__(
             env=env,
@@ -112,8 +113,10 @@ class PPO(OnPolicyAgent):
         self.max_grad_norm = max_grad_norm
 
         # default encoder
-        if len(self.obs_shape) == 3:
+        if len(self.obs_shape) == 3 and encoder == "atari":
             encoder = MnihCnnEncoder(observation_space=env.observation_space, feature_dim=feature_dim)
+        elif len(self.obs_shape) == 3 and encoder == "espeholt":
+            encoder = EspeholtResidualEncoder(observation_space=env.observation_space, feature_dim=feature_dim)
         elif len(self.obs_shape) == 1:
             feature_dim = self.obs_shape[0]  # type: ignore
             encoder = IdentityEncoder(

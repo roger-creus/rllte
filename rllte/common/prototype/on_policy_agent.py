@@ -157,6 +157,7 @@ class OnPolicyAgent(BaseAgent):
                         "obs": self.storage.observations[:-1],  # type: ignore
                         "actions": self.storage.actions,
                         "next_obs": self.storage.observations[1:],  # type: ignore
+                        "done": th.logical_or(self.storage.terminateds[:-1], self.storage.truncateds[:-1])
                     }
                 )
                 # compute intrinsic rewards
@@ -171,6 +172,17 @@ class OnPolicyAgent(BaseAgent):
                 # only add the intrinsic rewards to the advantages and returns
                 self.storage.advantages += intrinsic_rewards.to(self.device)
                 self.storage.returns += intrinsic_rewards.to(self.device)
+                
+                print(f"IR: {intrinsic_rewards.mean().item():.4f}")
+                
+                # update the intrinsic reward module
+                self.irs.update(
+                    samples={
+                        "obs": self.storage.observations[:-1],  # type: ignore
+                        "actions": self.storage.actions,
+                        "next_obs": self.storage.observations[1:],  # type: ignore
+                    }
+                )
 
             # update the agent
             self.update()
