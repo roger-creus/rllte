@@ -180,6 +180,9 @@ class Gymnasium2Torch(gym.Wrapper):
         )
 
         return self._format_obs(new_observations), rewards, terminateds, truncateds, infos
+    
+    def render(self):
+        return self.env.render()
 
 
 class FrameStack(gym.Wrapper):

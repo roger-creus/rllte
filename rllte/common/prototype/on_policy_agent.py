@@ -175,14 +175,6 @@ class OnPolicyAgent(BaseAgent):
                 
                 print(f"IR: {intrinsic_rewards.mean().item():.4f}")
                 
-                # update the intrinsic reward module
-                self.irs.update(
-                    samples={
-                        "obs": self.storage.observations[:-1],  # type: ignore
-                        "actions": self.storage.actions,
-                        "next_obs": self.storage.observations[1:],  # type: ignore
-                    }
-                )
 
             # update the agent
             self.update()

@@ -31,7 +31,7 @@ from torch.nn import functional as F
 from rllte.agent import utils
 from rllte.common.prototype import OffPolicyAgent
 from rllte.common.type_alias import VecEnv
-from rllte.xploit.encoder import IdentityEncoder, MnihCnnEncoder
+from rllte.xploit.encoder import IdentityEncoder, MnihCnnEncoder, PathakCnnEncoder
 from rllte.xploit.policy import OffPolicyDoubleQNetwork
 from rllte.xploit.storage import VanillaReplayStorage
 
@@ -84,6 +84,7 @@ class DQN(OffPolicyAgent):
         target_update_freq: int = 1000,
         discount: float = 0.99,
         init_fn: str = "orthogonal",
+        encoder_model: str = "pathak",
     ) -> None:
         super().__init__(
             env=env,
@@ -104,8 +105,10 @@ class DQN(OffPolicyAgent):
         self.target_update_freq = target_update_freq
 
         # default encoder
-        if len(self.obs_shape) == 3:
+        if len(self.obs_shape) == 3 and encoder_model == "atari":
             encoder = MnihCnnEncoder(observation_space=env.observation_space, feature_dim=feature_dim)
+        elif len(self.obs_shape) == 3 and encoder_model == "pathak":
+           encoder = PathakCnnEncoder(observation_space=env.observation_space, feature_dim=feature_dim)
         elif len(self.obs_shape) == 1:
             feature_dim = self.obs_shape[0]  # type: ignore
             encoder = IdentityEncoder(
@@ -156,14 +159,6 @@ class DQN(OffPolicyAgent):
             )
             batch = batch._replace(reward=batch.rewards + intrinsic_rewards.to(self.device))
             
-            # update irs
-            self.irs.update(
-                samples={
-                    "obs": batch.observations,
-                    "actions": batch.actions,
-                    "next_obs": batch.next_observations
-                }
-            )
 
         # encode
         encoded_obs = self.policy.encoder(batch.observations)
@@ -182,7 +177,7 @@ class DQN(OffPolicyAgent):
 
         # compute current Q values
         q_values = self.policy.qnet(encoded_obs)
-        q_values = th.gather(q_values, dim=1, index=batch.actions.unsqueeze(1).long())
+        q_values = th.gather(q_values, dim=1, index=batch.actions.long())
         # following https://github.com/DLR-RM/stable-baselines3/blob/d68ff2e17f2f823e6f48d9eb9cee28ca563a2554/stable_baselines3/dqn/dqn.py
         # less sensitive to outliers
         huber_loss = F.mse_loss(q_values, target_q_values)

@@ -149,6 +149,7 @@ class E3B(BaseIntrinsicRewardModule):
         batch_size: int = 256,
     ) -> None:
         super().__init__(observation_space, action_space, device, beta, kappa)
+        
         self.elliptical_encoder = Encoder(
             obs_shape=self._obs_shape,
             action_dim=self._action_dim,
@@ -189,7 +190,9 @@ class E3B(BaseIntrinsicRewardModule):
         """
         # compute the weighting coefficient of timestep t
         beta_t = self._beta * np.power(1.0 - self._kappa, step)
-        self.intrinsic_rewards
+        
+        # update the module
+        self.update(samples)
 
         # update the running mean and std
         self.running_mean_std.update(self.intrinsic_rewards)

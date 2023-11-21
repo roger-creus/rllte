@@ -21,7 +21,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # =============================================================================
-
+import imageio
+import os
 
 from collections import deque
 from copy import deepcopy
@@ -154,7 +155,7 @@ class OffPolicyAgent(BaseAgent):
                     real_next_obs[idx] = th.as_tensor(infos["final_observation"][idx], device=self.device) # type: ignore[index]
 
             # add new transitions
-            self.storage.add(obs, actions, rews, terms, truncs, infos, real_next_obs)
+            self.storage.add(obs, actions.unsqueeze(-1), rews, terms, truncs, infos, real_next_obs)
             self.global_step += self.num_envs
 
             # deal with the intrinsic reward module
@@ -216,12 +217,15 @@ class OffPolicyAgent(BaseAgent):
         obs, infos = self.eval_env.reset(seed=self.seed)
         episode_rewards: List[float] = []
         episode_steps: List[int] = []
+        episode_frames: List[int] = []
 
         # evaluation loop
         while len(episode_rewards) < num_eval_episodes:
             # sample actions
             with th.no_grad(), utils.eval_mode(self):
-                actions = self.policy(obs, training=False)
+                episode_frames.append(self.eval_env.env.env.envs[0].render())
+                actions = self.policy(obs, training=True)
+                print(actions)
 
             # observe reward and next obs
             next_obs, rews, terms, truncs, infos = self.eval_env.step(actions)
@@ -231,6 +235,14 @@ class OffPolicyAgent(BaseAgent):
                 eps_r, eps_l = utils.get_episode_statistics(infos)
                 episode_rewards.extend(eps_r)
                 episode_steps.extend(eps_l)
+
+                # save the frames as a gif
+                imageio.mimsave(
+                    os.path.join(self.work_dir, f"eval_{self.global_episode}.gif"),
+                    episode_frames,
+                    fps=30,
+                )
+                episode_frames = []
 
             # set the current observation
             obs = next_obs
